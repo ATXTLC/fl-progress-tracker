@@ -1,0 +1,20 @@
+## Interface: 16001
+## Title: FL Progress Tracker
+## Notes: Read-only progress tracker. Saves character, gear, quest, profession and guild snapshots to SavedVariables for an offline dashboard. No automation.
+## Author: Loadout and Worgin
+## Version: 1.2.0
+## SavedVariables: ForeverLedgerDB
+## X-Website: https://www.foreverledger.net/
+## X-License: MIT
+## X-Category: Quests & Leveling
+# Fill in after the projects exist (uncomment and set the numeric/alphanumeric IDs):
+# ## X-Curse-Project-ID: 000000
+# ## X-Wago-ID: XXXXXXXX
+# ## X-WoWI-ID: 00000
+
+Errors.lua
+Health.lua
+ForeverLedger.lua
+Progress.lua
+Meta.lua
+WhatsNew.lua

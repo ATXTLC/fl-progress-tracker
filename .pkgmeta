@@ -1,0 +1,41 @@
+# BigWigsMods packager config. The add-on lives in fl-progress-tracker/ (repo root holds the website,
+# companion, tests, etc.), so move that folder to be the package root and ignore everything else.
+package-as: fl-progress-tracker
+
+move-folders:
+  fl-progress-tracker/fl-progress-tracker: fl-progress-tracker
+
+enable-nolib-creation: no
+
+manual-changelog:
+  filename: fl-progress-tracker/CHANGELOG.md
+  markup-type: markdown
+
+ignore:
+  - .github
+  - .gitignore
+  - .luacheckrc
+  - .pkgmeta
+  - README.md
+  - "*.bat"
+  - "*.png"
+  - "*.py"
+  - "*.toml"
+  - "*.json"
+  - build
+  - companion
+  - data
+  - docs
+  - functions
+  - functions_staged
+  - listing
+  - patches
+  - preview
+  - sample
+  - schema
+  - seo
+  - seo_staged
+  - server
+  - tests
+  - tools
+  - triage
