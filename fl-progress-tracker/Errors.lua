@@ -67,7 +67,14 @@ local function scrub(s)
   local function drop(word, tag)
     if type(word) == "string" and #word > 1 then s = s:gsub("%f[%w\128-\255]" .. word:gsub("%p", "%%%0") .. "%f[^%w\128-\255]", tag) end
   end
-  drop(UnitName and UnitName("player"), "<player>")
+  -- WoW Forever: UnitName returns first name + surname (2nd return); scrub both (BigWigs 1ebaca2d, Plater v663)
+  local pFirst, pSurname
+  if UnitName then pFirst, pSurname = UnitName("player") end
+  if type(pFirst) == "string" and type(pSurname) == "string" and pSurname ~= "" then
+    drop(pFirst .. " " .. pSurname, "<player>")
+    drop(pSurname, "<player>")
+  end
+  drop(pFirst, "<player>")
   drop(GetRealmName and GetRealmName(), "<realm>")
   -- every character this add-on has ever saved (keys are "Name-Realm")
   local chars = type(ForeverLedgerDB) == "table" and type(ForeverLedgerDB.characters) == "table" and ForeverLedgerDB.characters
