@@ -71,6 +71,8 @@ local function scrub(s)
   local pFirst, pSurname
   if UnitName then pFirst, pSurname = UnitName("player") end
   if type(pFirst) == "string" and type(pSurname) == "string" and pSurname ~= "" then
+    local sep = Constants and Constants.CharacterNameSeparatorConsts and Constants.CharacterNameSeparatorConsts.CHARACTERNAME_SURNAME_SEPARATOR
+    if type(sep) == "string" and sep ~= "" then drop(pFirst .. sep .. pSurname, "<player>") end
     drop(pFirst .. " " .. pSurname, "<player>")
     drop(pSurname, "<player>")
   end
