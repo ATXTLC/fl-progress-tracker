@@ -75,7 +75,8 @@ local function scrub(s)
     for key, c in pairs(chars) do
       local n, r = tostring(key):match("^([^%-]+)%-(.+)$")
       drop(type(c) == "table" and c.name or n, "<player>")
-      drop(type(c) == "table" and c.realm or r, "<realm>")
+      local realm = type(c) == "table" and c.realm or r
+      if realm ~= "Forever" then drop(realm, "<realm>") end   -- "Forever" is the no-realm key label, not a real realm
     end
   end
   s = s:gsub("\1FL\1", "ForeverLedger"):gsub("\2FL\2", "fl-progress-tracker")

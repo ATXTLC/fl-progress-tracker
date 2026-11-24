@@ -11,16 +11,51 @@ local SLOTS = {
   "Trinket1Slot", "BackSlot", "MainHandSlot", "SecondaryHandSlot", "RangedSlot", "TabardSlot",
 }
 
+-- WoW Forever hotfix (2026-11-20, build 71037): GetRealmName() now returns "" on Forever
+-- (reported by DBM e963071a, BigWigs 9a5314d0, ElvUI 16.02; not in Blizzard patch notes).
+-- Treat an empty realm as "no realm" and use a fixed label so keys stay stable.
+local NO_REALM = "Forever"
+local function realmName()
+  local r = GetRealmName and GetRealmName()
+  if type(r) == "string" and r ~= "" then return r end
+  return nil
+end
+ns.realmName = realmName
+
 local function charKey()
   local name = UnitName("player") or "Unknown"
-  local realm = GetRealmName and GetRealmName() or "Unknown"
-  return name .. "-" .. realm
+  return name .. "-" .. (realmName() or NO_REALM)
+end
+
+-- One-time move of a character saved before the hotfix ("Name-Realm") to the new key, so
+-- progress is not split in two. Only moves when exactly one old entry has the same name and
+-- class; if there are several (same name on different realms) nothing is merged.
+local function adoptLegacy(chars, key)
+  if chars[key] then return end
+  local name = UnitName("player") or "Unknown"
+  local _, class = UnitClass("player")
+  local prefix = name .. "-"
+  local found, count = nil, 0
+  for k, c in pairs(chars) do
+    if type(k) == "string" and k ~= key and k:sub(1, #prefix) == prefix and #k > #prefix
+      and k:sub(#prefix + 1) ~= NO_REALM and type(c) == "table" and (c.classFile == nil or c.classFile == class) then
+      found, count = k, count + 1
+    end
+  end
+  if count == 1 then
+    local c = chars[found]
+    c.legacyKey = found
+    c.legacyRealm = c.realm
+    chars[key] = c
+    chars[found] = nil
+  end
 end
 
 local function getChar()
   ForeverLedgerDB.version = 1
   ForeverLedgerDB.characters = ForeverLedgerDB.characters or {}
   local key = charKey()
+  if not realmName() then adoptLegacy(ForeverLedgerDB.characters, key) end
   ForeverLedgerDB.characters[key] = ForeverLedgerDB.characters[key] or {}
   return ForeverLedgerDB.characters[key]
 end
@@ -31,7 +66,7 @@ local function saveBasics(c)
   local _, race = UnitRace("player")
   local _, class = UnitClass("player")
   c.name = UnitName("player")
-  c.realm = GetRealmName and GetRealmName() or nil
+  c.realm = realmName()   -- nil on Forever since the 2026-11-20 hotfix (GetRealmName() == "")
   c.faction = UnitFactionGroup("player")
   c.race = select(1, UnitRace("player")); c.raceFile = race
   c.class = select(1, UnitClass("player")); c.classFile = class
@@ -122,7 +157,7 @@ local function saveGuild(c)
   end
   c.guild = g
   ForeverLedgerDB.guilds = ForeverLedgerDB.guilds or {}
-  ForeverLedgerDB.guilds[gname .. "-" .. (c.realm or "")] = g
+  ForeverLedgerDB.guilds[gname .. "-" .. (c.realm or NO_REALM)] = g
 end
 
 local function snapshot(full)
