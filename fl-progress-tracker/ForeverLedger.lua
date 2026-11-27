@@ -27,27 +27,41 @@ local function charKey()
   return name .. "-" .. (realmName() or NO_REALM)
 end
 
--- One-time move of a character saved before the hotfix ("Name-Realm") to the new key, so
--- progress is not split in two. Only moves when exactly one old entry has the same name and
--- class; if there are several (same name on different realms) nothing is merged.
+-- One-time move of a character's older records to the stable key, so progress is not split.
+-- Two kinds of older record can exist on Forever (same lesson as ElvUI PR #1903, 2026-11-27):
+--   "Name-Realm" : saved before the 2026-11-20 hotfix (only used when exactly one has the same
+--                  name and class; if there are several, nothing is merged).
+--   "Name-"      : saved by 1.2.0 builds after the hotfix, when GetRealmName() was "" (newest data).
+-- The newest record becomes the live one; any other is kept (never deleted) under
+-- live.staleRecords[oldKey] and removed from the top level so the dashboard lists the character once.
 local function adoptLegacy(chars, key)
-  if chars[key] then return end
   local name = UnitName("player") or "Unknown"
   local _, class = UnitClass("player")
   local prefix = name .. "-"
+  local function sameClass(c) return type(c) == "table" and (c.classFile == nil or c.classFile == class) end
   local found, count = nil, 0
   for k, c in pairs(chars) do
     if type(k) == "string" and k ~= key and k:sub(1, #prefix) == prefix and #k > #prefix
-      and k:sub(#prefix + 1) ~= NO_REALM and type(c) == "table" and (c.classFile == nil or c.classFile == class) then
+      and k:sub(#prefix + 1) ~= NO_REALM and sameClass(c) then
       found, count = k, count + 1
     end
   end
-  if count == 1 then
-    local c = chars[found]
-    c.legacyKey = found
-    c.legacyRealm = c.realm
-    chars[key] = c
-    chars[found] = nil
+  local olds = {}
+  if chars[prefix] ~= nil and prefix ~= key and sameClass(chars[prefix]) then olds[#olds + 1] = prefix end
+  if count == 1 then olds[#olds + 1] = found end
+  for _, k in ipairs(olds) do
+    local c = chars[k]
+    if not chars[key] then
+      if k ~= prefix then c.legacyKey = k; c.legacyRealm = c.realm end
+      if c.realm == "" then c.realm = nil end
+      chars[key] = c
+    else
+      local live = chars[key]
+      live.staleRecords = live.staleRecords or {}
+      live.staleRecords[k] = c
+      if k ~= prefix and not live.legacyKey then live.legacyKey = k; live.legacyRealm = c.realm end
+    end
+    chars[k] = nil
   end
 end
 
@@ -158,6 +172,14 @@ local function saveGuild(c)
   c.guild = g
   ForeverLedgerDB.guilds = ForeverLedgerDB.guilds or {}
   ForeverLedgerDB.guilds[gname .. "-" .. (c.realm or NO_REALM)] = g
+  -- A 1.2.0 build after the 2026-11-20 hotfix saved this guild as "Guild-"; keep that copy aside
+  -- (never deleted) so the dashboard does not show the guild twice.
+  local emptyKey = gname .. "-"
+  if not c.realm and ForeverLedgerDB.guilds[emptyKey] then
+    ForeverLedgerDB.staleGuilds = ForeverLedgerDB.staleGuilds or {}
+    ForeverLedgerDB.staleGuilds[emptyKey] = ForeverLedgerDB.guilds[emptyKey]
+    ForeverLedgerDB.guilds[emptyKey] = nil
+  end
 end
 
 local function snapshot(full)
